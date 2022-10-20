@@ -1,3 +1,9 @@
+#include <Wire.h> 
+#include <LiquidCrystal_I2C.h>
+
+//? display
+LiquidCrystal_I2C lcd(0x3F,16,2);
+
 
 //?sensores
 #define vsense A0
@@ -25,6 +31,7 @@ float toomuch_temp = 25;
 
 
 int fan = 3;
+int fans = 0; //fan state
  
 int ecode = 0;
 
@@ -36,12 +43,16 @@ bool agua = 0;
 int buzzer = 4;
 
 int light = 2;
+int lights = 0; //light state
+
+float voltaje = 0;
 
 //servo pin = 6
+int roof = 0;
 
 void setup(){
 
-    s.begin(115200);
+    Serial.begin(115200);
 
     pinMode(wsense, INPUT);
     pinMode(magnet, INPUT);
@@ -49,75 +60,139 @@ void setup(){
     pinMode(s1, OUTPUT);
     pinMode(buzzer, OUTPUT);
 
-    digitalWrite(l_error, LOW);
+    lcd.init();
+    lcd.backlight();
+
 }
 
 void humedad(){
-    / ?Valores humedad
+    // ?Valores humedad
     for(int i = 0; i <= 100; i++){
-        h1 = h1 + analogRead(Sensor1);
+        h1 = h1 + analogRead(hsense);
         delay(1);
         h1 = h1 / 100.00;            
    }        
 }
 
-void s1error(){
-while(true){
-    humedad();      
-    digitalWrite(l_error, HIGH);
-    btn1s = digitalRead(btn1);
-    ecode = 1;
-    Serial.println(h1);
-    if(btn1s == 1){
-        //? 0
-        digitalWrite(buzzer, HIGH);
-        delay(1000);
-        digitalWrite(buzzer, LOW);
-        delay(300);
-        digitalWrite(buzzer, HIGH);
-        delay(1000);
-        digitalWrite(buzzer, LOW);
-        delay(300);
-        digitalWrite(buzzer, HIGH);
-        delay(1000);
-        digitalWrite(buzzer, LOW);
-        delay(300);
-        digitalWrite(buzzer, HIGH);
-        delay(1000);
-        digitalWrite(buzzer, LOW);
-        delay(300);
-        digitalWrite(buzzer, HIGH);
-        delay(1000);
-        digitalWrite(buzzer, LOW);
+void bz(){
+  for(int i = 0; i < 5; i++){
+    digitalWrite(buzzer, HIGH);
+    delay(250);
+    digitalWrite(buzzer, LOW);
+    delay(250);
+  }
+}
+void error(int ecode){
+  
+  lcd.clear();
+  
+  switch(ecode){
+    case 1:
+      lcd.print("Error ");
+      lcd.setCursor(0,7);
+      lcd.print(ecode);
+      bz();
+      humedad();
+      if(h1 < 1000 && ecode == 1){
+        ecode = 0;
+      }
+      break;
+      
+    case 2:
+      lcd.print("Error ");
+      lcd.setCursor(0,7);
+      lcd.print(ecode);
+      
+      bz();
+      
+      if(digitalRead(wsense) == 1 && ecode == 2){
+        ecode = 0;
+      }
+      break;
+      
+    case 3:
+      lcd.print("Error ");
+      lcd.setCursor(0,7);
+      lcd.print(ecode);  
         
-        delay(1500);
+      bz();
+      
+      voltaje = (analogRead(vsense) * 5.0) / 1023.0;
+      if(voltaje > 11.5 && ecode == 3){
+        ecode = 0;
+      }
+      break;
+      
+    case 4:
+      lcd.print("Error ");
+      lcd.setCursor(0,7);
+      lcd.print(ecode);  
+        
+      bz();
+      
+      voltaje = (analogRead(vsense) * 5.0) / 1023.0;
+      if(voltaje < 13 && ecode == 4){
+        ecode = 0;
+      }
+      break;
+      
+    case 5:
+      lcd.print("Error ");
+      lcd.setCursor(0,7);
+      lcd.print(ecode);
+          
+      bz();
+      
+      if((5.0 * analogRead(tsense) * 100.0) / 1023.0 < 40 && ecode == 5){
+        ecode = 0;
+      }
+      break;
+      
+  }
+}
 
-        //? 1
-        digitalWrite(buzzer, HIGH);
-        delay(500);
-        digitalWrite(buzzer, LOW);
-        delay(300);
-        digitalWrite(buzzer, HIGH);
-        delay(1000);
-        digitalWrite(buzzer, LOW);
-        delay(300);
-        digitalWrite(buzzer, HIGH);
-        delay(1000);
-        digitalWrite(buzzer, LOW);
-        delay(300);
-        digitalWrite(buzzer, HIGH);
-        delay(1000);
-        digitalWrite(buzzer, LOW);
-        delay(300);
-        digitalWrite(buzzer, HIGH);
-        delay(1000);
-        digitalWrite(buzzer, LOW);        
-        Serial.println(ecode);
-    }
-    if(h1 < 1000){
-      return; 
-    }
-    
+void Display(){
+  //states
+  lcd.setCursor(0,1);
+  if(s1s == 1){
+    lcd.print("            ");
+    lcd.print("Pump on");
+  }
+  
+  delay(1500);
+  
+  if(lights == 1){
+    lcd.print("            ");
+    lcd.print("Light on");    
+  }
+
+  delay(1500);
+
+  if(fans == 1){
+    lcd.print("            ");
+    lcd.print("Fan on");     
+  }
+
+  delay(1500);
+
+  if(roof == 0){
+    lcd.print("            ");
+    lcd.print("Roof open");     
+  }
+
+  //values
+  lcd.setCursor(1,1);
+
+  lcd.print("Temp:");
+  lcd.print(temp);
+  lcd.print(" ºC");
+
+  lcd.setCursor(2,1);
+
+  lcd.print("Humedad: ");
+  lcd.print(h1);
+  lcd.print(" %");
+  
 }
 
 void RA(){
@@ -126,20 +201,14 @@ void RA(){
 
     //?riego
     if(h1 < threshold1l){
-        digitalWrite(s2, LOW);
-        digitalWrite(s3, LOW);
-        digitalWrite(s4, LOW);
-        digitalWrite(s5, LOW);
         digitalWrite(s1, HIGH);
         while(true){
-           agua = digitalRead(Ws);
+           agua = digitalRead(wsense);
            delay(10);
 
            if(agua == 0){   
-              digitalWrite(s2, LOW);
-              digitalWrite(s3, LOW);
-              digitalWrite(s4, LOW);
-              digitalWrite(s5, LOW);
+              ecode = 2;
+              error(ecode);
               digitalWrite(s1, LOW);
               return;
            }                    
@@ -152,7 +221,8 @@ void RA(){
         }
     }
     if(h1 > 1000){
-        s1error();
+        ecode = 1;
+        error(ecode);
     }
     if(h1 >= threshold1h){
         digitalWrite(s1, LOW);
@@ -164,23 +234,25 @@ void RA(){
 void loop(){
 
     //voltaje
-    voltaje = analogRead(vsense);
-    voltaje = (voltaje * 5.0) / 1023.0;
+    voltaje = (analogRead(vsense) * 5.0) / 1023.0;
 
     if(voltaje <= 11.5){
       ecode = 3;
+      error(ecode);
     }
-    else if(voltage >= 13){
+    else if(voltaje >= 13){
       ecode = 4;
+      error(ecode);
     }
     //?Temperatura y ventilador
-    temp = analogRead(tsense);
+    temp = (5.0 * analogRead(tsense) * 100.0) / 1023.0;
 
     if(temp >= thresholdth){
         digitalWrite(fan, HIGH);
     }
     else if(temp > 40){
       ecode = 5;
+      error(ecode);
     }
     else{
         digitalWrite(fan, LOW);
@@ -188,9 +260,11 @@ void loop(){
 
     if(temp <= thresholdtl){
       digitalWrite(light, HIGH);
+      lights = 1;
     }
     else{
       digitalWrite(light, LOW);
+      lights = 0;
     }
 
     //? Sensor de agua
@@ -199,6 +273,7 @@ void loop(){
 
     if(agua == 0){   
         ecode = 2;
+        error(ecode);
     }
 
     //?Comunicación con app
@@ -208,5 +283,9 @@ void loop(){
         RA();
     }
   Serial.println(ecode);
-
+  
+  if(ecode != 0){
+    error(ecode);
+  }
+  Display();
 }
