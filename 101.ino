@@ -1,5 +1,7 @@
 #include <Wire.h> 
 #include <LiquidCrystal_I2C.h>
+#include <Servo.h>
+#include <CurieBLE.h>
 
 //? display
 LiquidCrystal_I2C lcd(0x3F,16,2);
@@ -50,9 +52,22 @@ float voltaje = 0;
 //servo pin = 6
 int roof = 0;
 
+Servo servo;
+
+//bluetooth
+char incoming_value = 0;
+
+BLEPeripheral blePeripheral;  // BLE Peripheral Device (the board you're programming)
+BLEService ledService("19B10000-E8F2-537E-4F6C-D104768A1214"); // BLE LED Service
+
+// BLE LED Switch Characteristic - custom 128-bit UUID, read and writable by central
+BLEUnsignedCharCharacteristic switchCharacteristic("19B10001-E8F2-537E-4F6C-D104768A1214", BLERead | BLEWrite);
+
 void setup(){
 
     Serial.begin(115200);
+
+    servo.attach(6);
 
     pinMode(wsense, INPUT);
     pinMode(magnet, INPUT);
@@ -63,6 +78,20 @@ void setup(){
     lcd.init();
     lcd.backlight();
 
+}
+
+void Open(){
+  roof = digitalRead(magnet);
+  if(roof == 1){
+    servo.write(90);
+  }
+}
+
+void Close(){
+  roof = digitalRead(magnet);
+  if(roof == 0){
+    servo.write(0);
+  }
 }
 
 void humedad(){
@@ -202,6 +231,7 @@ void RA(){
     //?riego
     if(h1 < threshold1l){
         digitalWrite(s1, HIGH);
+        s1s = 1;
         while(true){
            agua = digitalRead(wsense);
            delay(10);
@@ -249,6 +279,7 @@ void loop(){
 
     if(temp >= thresholdth){
         digitalWrite(fan, HIGH);
+        fans = 1;
     }
     else if(temp > 40){
       ecode = 5;
@@ -256,6 +287,7 @@ void loop(){
     }
     else{
         digitalWrite(fan, LOW);
+        fans = 0;
     }
 
     if(temp <= thresholdtl){
@@ -288,4 +320,14 @@ void loop(){
     error(ecode);
   }
   Display();
+
+  if(Serial.available() > 0){
+
+    incoming_value = Serial.read();
+
+    Serial.print(incoming_value);
+    Serial.print("\n");
+
+    //read values
+  }
 }
