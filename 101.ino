@@ -4,7 +4,7 @@
 #include <CurieBLE.h>
 
 //? display
-LiquidCrystal_I2C lcd(0x3F,16,2);
+LiquidCrystal_I2C lcd(0x3F,20,4);
 
 
 //?sensores
@@ -12,7 +12,7 @@ LiquidCrystal_I2C lcd(0x3F,16,2);
 #define wsense A1
 #define tsense A2
 #define hsense A3
-#define magnet A4
+int magnet = 7;
 
 
 //?variables
@@ -54,7 +54,7 @@ int roof = 0;
 
 Servo servo;
 
-//bluetooth
+/*/bluetooth
 char incoming_value = 0;
 
 BLEPeripheral blePeripheral;  // BLE Peripheral Device (the board you're programming)
@@ -62,10 +62,10 @@ BLEService ledService("19B10000-E8F2-537E-4F6C-D104768A1214"); // BLE LED Servic
 
 // BLE LED Switch Characteristic - custom 128-bit UUID, read and writable by central
 BLEUnsignedCharCharacteristic switchCharacteristic("19B10001-E8F2-537E-4F6C-D104768A1214", BLERead | BLEWrite);
-
+*/
 void setup(){
 
-    Serial.begin(115200);
+    Serial.begin(9600);
 
     servo.attach(6);
 
@@ -99,8 +99,9 @@ void humedad(){
     for(int i = 0; i <= 100; i++){
         h1 = h1 + analogRead(hsense);
         delay(1);
-        h1 = h1 / 100.00;            
+        h1 = h1 / 100.00;           
    }        
+   Serial.println("h"); 
 }
 
 void bz(){
@@ -118,7 +119,7 @@ void error(int ecode){
   switch(ecode){
     case 1:
       lcd.print("Error ");
-      lcd.setCursor(0,7);
+      //lcd.setCursor(0,7);
       lcd.print(ecode);
       bz();
       humedad();
@@ -129,7 +130,7 @@ void error(int ecode){
       
     case 2:
       lcd.print("Error ");
-      lcd.setCursor(0,7);
+      //lcd.setCursor(0,7);
       lcd.print(ecode);
       
       bz();
@@ -141,7 +142,7 @@ void error(int ecode){
       
     case 3:
       lcd.print("Error ");
-      lcd.setCursor(0,7);
+      //lcd.setCursor(0,7);
       lcd.print(ecode);  
         
       bz();
@@ -154,7 +155,7 @@ void error(int ecode){
       
     case 4:
       lcd.print("Error ");
-      lcd.setCursor(0,7);
+      //lcd.setCursor(0,7);
       lcd.print(ecode);  
         
       bz();
@@ -167,7 +168,7 @@ void error(int ecode){
       
     case 5:
       lcd.print("Error ");
-      lcd.setCursor(0,7);
+      //lcd.setCursor(0,7);
       lcd.print(ecode);
           
       bz();
@@ -182,46 +183,53 @@ void error(int ecode){
 
 void Display(){
   //states
-  lcd.setCursor(0,1);
+  lcd.setCursor(0,0);
   if(s1s == 1){
     lcd.print("            ");
+    lcd.setCursor(0,0);
     lcd.print("Pump on");
+    delay(1500);
   }
   
-  delay(1500);
   
   if(lights == 1){
+    lcd.setCursor(0,0);
     lcd.print("            ");
     lcd.print("Light on");    
+    delay(1500);
   }
 
-  delay(1500);
 
   if(fans == 1){
+    lcd.setCursor(0,0);
     lcd.print("            ");
-    lcd.print("Fan on");     
+    lcd.setCursor(0,0);
+    lcd.print("Fan on");
+    delay(1500);     
   }
 
-  delay(1500);
 
   if(roof == 0){
+    lcd.setCursor(0,0);
     lcd.print("            ");
-    lcd.print("Roof open");     
+    lcd.setCursor(0,0);
+    lcd.print("Roof open"); 
+    delay(1500);    
   }
 
   //values
-  lcd.setCursor(1,1);
+  lcd.setCursor(0,1);
 
   lcd.print("Temp:");
   lcd.print(temp);
-  lcd.print(" ºC");
+  lcd.print("C");
 
-  lcd.setCursor(2,1);
+  lcd.setCursor(0,2);
 
   lcd.print("Humedad: ");
   lcd.print(h1);
   lcd.print(" %");
-  
+  Serial.println("Display");
 }
 
 void RA(){
@@ -243,6 +251,7 @@ void RA(){
               return;
            }                    
           humedad();
+          Display();
           if(h1 > threshold1h){
             digitalWrite(s1, LOW);
             s1s = 0;
@@ -264,7 +273,7 @@ void RA(){
 void loop(){
 
     //voltaje
-    voltaje = (analogRead(vsense) * 5.0) / 1023.0;
+    voltaje = (analogRead(vsense) * 1023.0) / 5.0;
 
     if(voltaje <= 11.5){
       ecode = 3;
@@ -275,7 +284,8 @@ void loop(){
       error(ecode);
     }
     //?Temperatura y ventilador
-    temp = (5.0 * analogRead(tsense) * 100.0) / 1023.0;
+    temp = (analogRead(tsense) / 1023.0) * 5.0;
+    temp = temp * 100.0;
 
     if(temp >= thresholdth){
         digitalWrite(fan, HIGH);
@@ -300,9 +310,16 @@ void loop(){
     }
 
     //? Sensor de agua
-    agua = digitalRead(wsense);
+    agua = bool(digitalRead(wsense));
     delay(10);
-
+  Serial.println(ecode);
+  
+  if(ecode != 0){
+    error(ecode);
+  }
+  Display();
+  Serial.println(voltaje);
+  
     if(agua == 0){   
         ecode = 2;
         error(ecode);
@@ -310,17 +327,11 @@ void loop(){
 
     //?Comunicación con app
 
-
     if (agua == 1){
         RA();
     }
-  Serial.println(ecode);
-  
-  if(ecode != 0){
-    error(ecode);
-  }
-  Display();
 
+/*
   if(Serial.available() > 0){
 
     incoming_value = Serial.read();
@@ -330,4 +341,5 @@ void loop(){
 
     //read values
   }
+  */
 }
