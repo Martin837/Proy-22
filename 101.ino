@@ -54,15 +54,30 @@ int roof = 0;
 
 Servo servo;
 
-/*/bluetooth
-char incoming_value = 0;
+//bluetooth
+  //services 
+BLEService tempService("ff27e5d2-4685-4acf-bb0d-9b8e78ef3fe2");
+BLEService pumpService("030f42d5-576e-47d6-8eeb-722e2ade1e76");
+BLEService lightService("4f97110d-c8f4-4488-96b8-923d043e9d7a");
+BLEService humidityService("297406a6-b976-41de-af77-7acb1bae7857");
+BLEService roofService("297406a6-b976-41de-af77-7acb1bae7857");
+BLEService ventService("297406a6-b976-41de-af77-7acb1bae7857");
+BLEService magnetService("da060191-1f87-4ad2-88c1-0dca8008bd03");
+BLEService errorService("ffcedbaf-2a7f-47c1-85ef-8138891396cc");
+
+  //characteristics
+BLECharCharacteristic tempCharacteristic("413d567e-b751-4db7-bda5-a156784413c5", BLEWrite);
+BLECharCharacteristic pumpCharacteristic("363e31ae-1e66-4573-aa91-011ae4f416c3", BLEWrite);
+BLECharCharacteristic lightCharacteristic("1a9fdd82-734b-4332-8429-b2dfbe375f4b", BLEWrite);
+BLECharCharacteristic humidityCharacteristic("fb76b4b0-61e3-4b03-ad8a-76d7cd82d50d", BLEWrite);
+BLECharCharacteristic roofCharacteristic("61f4de7b-4736-47fc-bf6f-f6f23f618a7b", BLERead);
+BLECharCharacteristic ventCharacteristic("065b22c2-0bf7-4344-9fbc-d93bb9d53437", BLEWrite);
+BLECharCharacteristic magnetCharacteristic("25934e48-2063-43d9-8329-47f8ac73f352", BLEWrite);
+BLECharCharacteristic errorCharacteristic("c7c92757-504d-4aa8-9b4a-94c923592aaf", BLEWrite);
+
 
 BLEPeripheral blePeripheral;  // BLE Peripheral Device (the board you're programming)
-BLEService ledService("19B10000-E8F2-537E-4F6C-D104768A1214"); // BLE LED Service
 
-// BLE LED Switch Characteristic - custom 128-bit UUID, read and writable by central
-BLEUnsignedCharCharacteristic switchCharacteristic("19B10001-E8F2-537E-4F6C-D104768A1214", BLERead | BLEWrite);
-*/
 void setup(){
 
     Serial.begin(9600);
@@ -78,6 +93,73 @@ void setup(){
     lcd.init();
     lcd.backlight();
 
+    //BLE
+    blePeripheral.setLocalName("invernadero");
+
+    //Attributes
+    blePeripheral.addAttribute(tempService);
+    blePeripheral.addAttribute(pumpService);
+    blePeripheral.addAttribute(lightService);
+    blePeripheral.addAttribute(humidityService);
+    blePeripheral.addAttribute(roofService);
+    blePeripheral.addAttribute(ventService);
+    blePeripheral.addAttribute(magnetService);
+    blePeripheral.addAttribute(errorService);
+    blePeripheral.addAttribute(tempCharacteristic);
+    blePeripheral.addAttribute(pumpCharacteristic);
+    blePeripheral.addAttribute(lightCharacteristic);
+    blePeripheral.addAttribute(humidityCharacteristic);
+    blePeripheral.addAttribute(roofCharacteristic);
+    blePeripheral.addAttribute(ventCharacteristic);
+    blePeripheral.addAttribute(magnetCharacteristic);
+    blePeripheral.addAttribute(errorCharacteristic);
+
+    blePeripheral.begin();
+}
+
+void ble(){
+  BLECentral central = blePeripheral.central();
+  if(central){
+    
+    humedad();
+    
+    roof = digitalRead(magnet);
+    
+    blePeripheral.poll();
+    
+    blePeripheral.setAdvertisedServiceUuid(tempService.uuid());
+    tempCharacteristic.setValue(temp);
+    
+    blePeripheral.setAdvertisedServiceUuid(pumpService.uuid());
+    pumpCharacteristic.setValue(s1s);
+    
+    blePeripheral.setAdvertisedServiceUuid(lightService.uuid());
+    lightCharacteristic.setValue(lights);
+    
+    blePeripheral.setAdvertisedServiceUuid(humidityService.uuid());
+    humidityCharacteristic.setValue(h1);
+    
+    blePeripheral.setAdvertisedServiceUuid(ventService.uuid());
+    ventCharacteristic.setValue(fans);
+    
+    blePeripheral.setAdvertisedServiceUuid(magnetService.uuid());
+    magnetCharacteristic.setValue(roof);
+    
+    blePeripheral.setAdvertisedServiceUuid(errorService.uuid());
+    errorCharacteristic.setValue(ecode);
+
+    if(roofCharacteristic.written()){
+      if(digitalRead(magnet) == 0){
+        Close();
+      }
+      if(digitalRead(magnet) == 1){
+        Open();
+      }
+    }
+  }
+  else{
+    return;
+  }
 }
 
 void Open(){
@@ -252,6 +334,7 @@ void RA(){
            }                    
           humedad();
           Display();
+          ble();
           if(h1 > threshold1h){
             digitalWrite(s1, LOW);
             s1s = 0;
@@ -331,15 +414,6 @@ void loop(){
         RA();
     }
 
-/*
-  if(Serial.available() > 0){
 
-    incoming_value = Serial.read();
-
-    Serial.print(incoming_value);
-    Serial.print("\n");
-
-    //read values
-  }
-  */
+    ble();
 }
