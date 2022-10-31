@@ -38,3 +38,9 @@ vent: 065b22c2-0bf7-4344-9fbc-d93bb9d53437
 magnet: 25934e48-2063-43d9-8329-47f8ac73f352
 
 error: c7c92757-504d-4aa8-9b4a-94c923592aaf
+
+To Do:
+
+-add bluetooth to flutter app
+
+-add Widgets
