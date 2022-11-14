@@ -20,7 +20,7 @@ float h1 = 0;
 
 float temp = 0;
 
-float threshold1l = 50; //min threshold
+float threshold1l = 100; //min threshold
 float threshold1h = 80;//max threshold
 
 float thresholdtl = 22.5; //min threshold
@@ -301,6 +301,13 @@ void Display(){
     lcd.print("Roof open"); 
     delay(1500);    
   }
+    if(roof == 1){
+    lcd.setCursor(0,0);
+    lcd.print("            ");
+    lcd.setCursor(0,0);
+    lcd.print("Roof closed"); 
+    delay(1500);    
+  }
 
   //values
   lcd.setCursor(0,1);
@@ -323,7 +330,7 @@ void RA(){
   humedad();
 
     //?riego
-    if(h1 < threshold1l){
+    if(h1 <= threshold1l){
         digitalWrite(s1, HIGH);
         s1s = 1;
         
@@ -367,7 +374,10 @@ void loop(){
     }*/
     //?Temperatura y ventilador
     temp = (analogRead(tsense) * 1023.0) / 5.0;
+    temp = temp * 10.0;
+    temp = temp / 10.0;
     temp = temp / 1000.0;
+    //temp = temp / 1000.0;
     
     if(temp >= thresholdth){
         digitalWrite(fan, HIGH);
